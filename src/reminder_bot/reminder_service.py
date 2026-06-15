@@ -25,6 +25,17 @@ def _retry_cutoff(current: datetime, retry_after_seconds: int) -> datetime:
     return datetime.fromtimestamp(current.timestamp() - retry_after_seconds, tz=UTC)
 
 
+def _duplicate_key(row) -> tuple:
+    return (
+        row["guild_id"],
+        row["channel_id"],
+        row["creator_user_id"],
+        row["title"],
+        row["due_at"],
+        row["remind_at"],
+    )
+
+
 class ReminderService:
     notification_retry_after_seconds = 300
     notification_claim_seconds = 120
@@ -231,7 +242,35 @@ class ReminderService:
             if not rows:
                 return []
 
-            reminder_ids = [row["id"] for row in rows]
+            selected_rows = {}
+            duplicate_ids = []
+            for row in rows:
+                key = _duplicate_key(row)
+                existing = selected_rows.get(key)
+                if existing is None or row["id"] > existing["id"]:
+                    if existing is not None:
+                        duplicate_ids.append(existing["id"])
+                    selected_rows[key] = row
+                else:
+                    duplicate_ids.append(row["id"])
+
+            if duplicate_ids:
+                duplicate_placeholders = ", ".join("?" for _ in duplicate_ids)
+                connection.execute(
+                    f"""
+                    UPDATE reminders
+                    SET status = 'deleted',
+                        updated_at = ?,
+                        notification_claimed_until = NULL,
+                        last_notification_error = 'Skipped duplicate pending reminder'
+                    WHERE id IN ({duplicate_placeholders})
+                      AND status = 'pending'
+                      AND notified_at IS NULL
+                    """,
+                    (_serialize(current), *duplicate_ids),
+                )
+
+            reminder_ids = [row["id"] for row in selected_rows.values()]
             placeholders = ", ".join("?" for _ in reminder_ids)
             connection.execute(
                 f"""

@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import unittest
 
+from reminder_bot.database import open_database
 from reminder_bot.reminder_service import ReminderService
 
 
@@ -199,6 +200,45 @@ class ReminderServiceTest(unittest.TestCase):
         self.assertEqual([], self.service.claim_due_for_notification(now=now + timedelta(seconds=30)))
         reclaimed = self.service.claim_due_for_notification(now=now + timedelta(minutes=2))
         self.assertEqual([reminder.id], [item.id for item in reclaimed])
+
+    def test_claim_due_for_notification_skips_existing_duplicate_pending_reminders(self) -> None:
+        now = datetime(2026, 6, 20, 9, 0, tzinfo=UTC)
+        first = self.service.create_reminder(
+            guild_id=1,
+            channel_id=2,
+            creator_user_id=3,
+            title="Duplicate",
+            due_at=now,
+            remind_at=now,
+        )
+        with open_database(self.database_path) as connection:
+            row = connection.execute("SELECT * FROM reminders WHERE id = ?", (first.id,)).fetchone()
+            connection.execute(
+                """
+                INSERT INTO reminders (
+                    guild_id, channel_id, creator_user_id, assignee_user_id,
+                    title, description, due_at, remind_at, created_at, updated_at
+                )
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    row["guild_id"],
+                    row["channel_id"],
+                    row["creator_user_id"],
+                    row["assignee_user_id"],
+                    row["title"],
+                    row["description"],
+                    row["due_at"],
+                    row["remind_at"],
+                    row["created_at"],
+                    row["updated_at"],
+                ),
+            )
+
+        claimed = self.service.claim_due_for_notification(now=now)
+
+        self.assertEqual([2], [item.id for item in claimed])
+        self.assertEqual("deleted", self.service.get_reminder(1, 1).status)
 
     def test_mark_notified_does_not_update_done_reminder(self) -> None:
         now = datetime(2026, 6, 20, 9, 0, tzinfo=UTC)
