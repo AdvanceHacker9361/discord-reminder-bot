@@ -148,6 +148,11 @@ python -m compileall src tests
 - リマインダーが業務上重要な場合は、`data/` 配下のSQLiteデータベースを定期的にバックアップしてください。
 - 通知時刻は実行環境のシステム時刻に依存するため、ホストマシンの時刻を正確に保ってください。
 
+## ポリシー
+
+- [サービス利用規約](TERMS_OF_SERVICE.md)
+- [プライバシーポリシー](PRIVACY_POLICY.md)
+
 ## トラブルシュート
 
 - `/reminder` が表示されない: 開発中は `DISCORD_GUILD_ID` を設定してBotを再起動してください。
