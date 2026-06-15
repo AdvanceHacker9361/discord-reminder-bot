@@ -41,7 +41,16 @@ class ReminderScheduler(commands.Cog):
                 continue
 
             try:
-                await channel.send(format_notification(reminder, self.bot.settings.timezone))
+                allowed_mentions = discord.AllowedMentions(
+                    everyone=False,
+                    users=[discord.Object(id=reminder.assignee_user_id)] if reminder.assignee_user_id else False,
+                    roles=False,
+                    replied_user=False,
+                )
+                await channel.send(
+                    format_notification(reminder, self.bot.settings.timezone),
+                    allowed_mentions=allowed_mentions,
+                )
             except discord.DiscordException as exc:
                 logger.exception("Failed to send reminder %s", reminder.id)
                 self.service.mark_notification_failed(reminder.id, str(exc))

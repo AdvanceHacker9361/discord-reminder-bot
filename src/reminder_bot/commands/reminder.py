@@ -4,7 +4,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from ..formatting import format_reminder_line
+from ..formatting import format_reminder_detail, format_reminder_line
 from ..reminder_service import ReminderService
 from ..time_parser import parse_local_datetime
 
@@ -18,6 +18,12 @@ class ReminderCog(commands.Cog):
 
     def _can_delete(self, interaction: discord.Interaction, creator_user_id: int) -> bool:
         if interaction.user.id == creator_user_id:
+            return True
+        permissions = getattr(interaction.user, "guild_permissions", None)
+        return bool(permissions and permissions.manage_messages)
+
+    def _can_complete(self, interaction: discord.Interaction, creator_user_id: int, assignee_user_id: int | None) -> bool:
+        if interaction.user.id in {creator_user_id, assignee_user_id}:
             return True
         permissions = getattr(interaction.user, "guild_permissions", None)
         return bool(permissions and permissions.manage_messages)
@@ -94,11 +100,39 @@ class ReminderCog(commands.Cog):
         suffix = "\n..." if len(reminders) > 20 else ""
         await interaction.response.send_message("\n".join(lines) + suffix, ephemeral=True)
 
+    @reminder.command(name="show", description="工程リマインダーの詳細を表示します")
+    @app_commands.describe(reminder_id="表示するリマインダーID")
+    async def show(self, interaction: discord.Interaction, reminder_id: int) -> None:
+        if interaction.guild_id is None:
+            await interaction.response.send_message("サーバー内で実行してください。", ephemeral=True)
+            return
+
+        try:
+            reminder = self.service.get_reminder(interaction.guild_id, reminder_id)
+        except LookupError:
+            await interaction.response.send_message("リマインダーが見つかりません。", ephemeral=True)
+            return
+
+        await interaction.response.send_message(
+            format_reminder_detail(reminder, self.bot.settings.timezone),
+            ephemeral=True,
+        )
+
     @reminder.command(name="done", description="工程リマインダーを完了にします")
     @app_commands.describe(reminder_id="完了するリマインダーID")
     async def done(self, interaction: discord.Interaction, reminder_id: int) -> None:
         if interaction.guild_id is None:
             await interaction.response.send_message("サーバー内で実行してください。", ephemeral=True)
+            return
+
+        try:
+            existing = self.service.get_reminder(interaction.guild_id, reminder_id)
+        except LookupError:
+            await interaction.response.send_message("リマインダーが見つかりません。", ephemeral=True)
+            return
+
+        if not self._can_complete(interaction, existing.creator_user_id, existing.assignee_user_id):
+            await interaction.response.send_message("完了にできるのは作成者、担当者、またはメッセージ管理権限のあるメンバーです。", ephemeral=True)
             return
 
         try:

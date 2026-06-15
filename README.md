@@ -72,9 +72,24 @@ The bot must have these permissions in each notification target channel.
 ```text
 /reminder add title due_at description assignee remind_at channel
 /reminder list include_done
+/reminder show reminder_id
 /reminder done reminder_id
 /reminder delete reminder_id
 ```
+
+Examples:
+
+```text
+/reminder add title:"資料レビュー" due_at:"2h" assignee:@tanaka
+/reminder add title:"公開前チェック" due_at:"2026-06-20 18:00" remind_at:"2026-06-20 17:30" channel:#作業通知
+/reminder list
+/reminder show reminder_id:7
+/reminder done reminder_id:7
+/reminder delete reminder_id:7
+```
+
+When `remind_at` is omitted, the bot notifies at `due_at`. Use the numeric ID
+shown as `#7` with `show`, `done`, and `delete`.
 
 Datetime values accept ISO-like local times such as:
 
@@ -103,6 +118,8 @@ python -m unittest discover -s tests
 - Never commit `.env` or a real Discord bot token.
 - Reminder times are stored as UTC in SQLite and displayed in `TIMEZONE`.
 - If a notification fails because of channel permissions or a deleted channel, the bot records the error and retries after a short delay.
+- Notification messages only allow the configured assignee mention; arbitrary mentions in titles or descriptions are not expanded.
+- Completing a reminder is limited to the creator, assignee, or members with Manage Messages permission.
 - Back up the SQLite database file under `data/` if reminders matter operationally.
 - Keep the host machine clock accurate; reminder delivery depends on system time.
 

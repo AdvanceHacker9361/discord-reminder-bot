@@ -33,6 +33,29 @@ class ReminderServiceTest(unittest.TestCase):
         self.assertEqual([created.id], [reminder.id for reminder in reminders])
         self.assertEqual("Review draft", reminders[0].title)
 
+    def test_create_trims_title_and_description(self) -> None:
+        created = self.service.create_reminder(
+            guild_id=1,
+            channel_id=2,
+            creator_user_id=3,
+            title="  Review draft  ",
+            description="  Check it.  ",
+            due_at=datetime(2026, 6, 20, 9, 0, tzinfo=UTC),
+        )
+
+        self.assertEqual("Review draft", created.title)
+        self.assertEqual("Check it.", created.description)
+
+    def test_rejects_blank_title(self) -> None:
+        with self.assertRaises(ValueError):
+            self.service.create_reminder(
+                guild_id=1,
+                channel_id=2,
+                creator_user_id=3,
+                title=" ",
+                due_at=datetime(2026, 6, 20, 9, 0, tzinfo=UTC),
+            )
+
     def test_done_reminders_are_hidden_by_default(self) -> None:
         reminder = self.service.create_reminder(
             guild_id=1,
@@ -46,6 +69,20 @@ class ReminderServiceTest(unittest.TestCase):
 
         self.assertEqual([], self.service.list_reminders(1))
         self.assertEqual(["done"], [item.status for item in self.service.list_reminders(1, include_done=True)])
+
+    def test_deleted_reminders_are_hidden_from_lists(self) -> None:
+        reminder = self.service.create_reminder(
+            guild_id=1,
+            channel_id=2,
+            creator_user_id=3,
+            title="Remove",
+            due_at=datetime(2026, 6, 20, 9, 0, tzinfo=UTC),
+        )
+
+        deleted = self.service.delete_reminder(1, reminder.id)
+
+        self.assertEqual("deleted", deleted.status)
+        self.assertEqual([], self.service.list_reminders(1, include_done=True))
 
     def test_due_for_notification_returns_unnotified_pending_items(self) -> None:
         now = datetime(2026, 6, 20, 9, 0, tzinfo=UTC)
