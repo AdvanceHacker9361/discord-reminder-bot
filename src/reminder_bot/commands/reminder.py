@@ -76,7 +76,16 @@ class ReminderCog(commands.Cog):
                 remind_at=remind,
             )
         except ValueError as exc:
-            await interaction.response.send_message(f"入力を確認してください: {exc}", ephemeral=True)
+            message = str(exc)
+            if message.startswith("duplicate reminder already exists as #"):
+                reminder_id = message.rsplit("#", 1)[-1]
+                await interaction.response.send_message(
+                    f"同じリマインダーが既に登録されています: `#{reminder_id}`",
+                    ephemeral=True,
+                )
+                return
+
+            await interaction.response.send_message(f"入力を確認してください: {message}", ephemeral=True)
             return
 
         await interaction.response.send_message(

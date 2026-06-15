@@ -56,6 +56,46 @@ class ReminderServiceTest(unittest.TestCase):
                 due_at=datetime(2026, 6, 20, 9, 0, tzinfo=UTC),
             )
 
+    def test_rejects_duplicate_pending_reminder(self) -> None:
+        due_at = datetime(2026, 6, 20, 9, 0, tzinfo=UTC)
+        self.service.create_reminder(
+            guild_id=1,
+            channel_id=2,
+            creator_user_id=3,
+            title="Review draft",
+            due_at=due_at,
+        )
+
+        with self.assertRaisesRegex(ValueError, "duplicate reminder already exists as #1"):
+            self.service.create_reminder(
+                guild_id=1,
+                channel_id=2,
+                creator_user_id=3,
+                title="Review draft",
+                due_at=due_at,
+            )
+
+    def test_allows_same_title_at_different_due_time(self) -> None:
+        first_due_at = datetime(2026, 6, 20, 9, 0, tzinfo=UTC)
+        second_due_at = datetime(2026, 6, 20, 10, 0, tzinfo=UTC)
+
+        self.service.create_reminder(
+            guild_id=1,
+            channel_id=2,
+            creator_user_id=3,
+            title="Review draft",
+            due_at=first_due_at,
+        )
+        created = self.service.create_reminder(
+            guild_id=1,
+            channel_id=2,
+            creator_user_id=3,
+            title="Review draft",
+            due_at=second_due_at,
+        )
+
+        self.assertEqual(2, created.id)
+
     def test_done_reminders_are_hidden_by_default(self) -> None:
         reminder = self.service.create_reminder(
             guild_id=1,

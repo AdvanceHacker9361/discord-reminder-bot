@@ -22,6 +22,18 @@ class TimeParserTest(unittest.TestCase):
 
         self.assertEqual(datetime(2026, 6, 20, 18, 10, tzinfo=self.timezone), parsed)
 
+    def test_parse_quoted_relative_minutes(self) -> None:
+        now = datetime(2026, 6, 20, 18, 0, tzinfo=self.timezone)
+
+        parsed = parse_local_datetime('"10m"', self.timezone, now=now)
+
+        self.assertEqual(datetime(2026, 6, 20, 18, 10, tzinfo=self.timezone), parsed)
+
+    def test_parse_quoted_absolute_datetime(self) -> None:
+        parsed = parse_local_datetime('"2026-06-20 18:00"', self.timezone)
+
+        self.assertEqual(datetime(2026, 6, 20, 18, 0, tzinfo=self.timezone), parsed)
+
     def test_parse_relative_hours(self) -> None:
         now = datetime(2026, 6, 20, 18, 0, tzinfo=self.timezone)
 

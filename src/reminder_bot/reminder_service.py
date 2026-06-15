@@ -55,6 +55,31 @@ class ReminderService:
 
         now = _now_utc()
         with open_database(self.database_path) as connection:
+            existing = connection.execute(
+                """
+                SELECT * FROM reminders
+                WHERE guild_id = ?
+                  AND channel_id = ?
+                  AND creator_user_id = ?
+                  AND title = ?
+                  AND due_at = ?
+                  AND remind_at = ?
+                  AND status = 'pending'
+                ORDER BY id ASC
+                LIMIT 1
+                """,
+                (
+                    guild_id,
+                    channel_id,
+                    creator_user_id,
+                    clean_title,
+                    _serialize(due_at),
+                    _serialize(effective_remind_at),
+                ),
+            ).fetchone()
+            if existing is not None:
+                raise ValueError(f"duplicate reminder already exists as #{existing['id']}")
+
             cursor = connection.execute(
                 """
                 INSERT INTO reminders (

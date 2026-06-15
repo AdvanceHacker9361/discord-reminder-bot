@@ -7,8 +7,15 @@ import re
 RELATIVE_PATTERN = re.compile(r"^(?P<amount>\d+)\s*(?P<unit>[mhd])$", re.IGNORECASE)
 
 
-def parse_local_datetime(value: str, timezone: tzinfo, *, now: datetime | None = None) -> datetime:
+def _strip_wrapping_quotes(value: str) -> str:
     normalized = value.strip()
+    if len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in {"'", '"'}:
+        return normalized[1:-1].strip()
+    return normalized
+
+
+def parse_local_datetime(value: str, timezone: tzinfo, *, now: datetime | None = None) -> datetime:
+    normalized = _strip_wrapping_quotes(value)
     if not normalized:
         raise ValueError("datetime is required")
 
