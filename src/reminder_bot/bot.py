@@ -3,6 +3,10 @@ from __future__ import annotations
 import asyncio
 import logging
 
+import truststore
+
+truststore.inject_into_ssl()
+
 import discord
 from discord.ext import commands
 
@@ -46,4 +50,3 @@ async def main() -> None:
 
 if __name__ == "__main__":
     asyncio.run(main())
-
