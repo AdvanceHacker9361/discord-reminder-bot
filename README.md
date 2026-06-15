@@ -1,36 +1,35 @@
-# Discord Reminder Bot
+# Discord リマインダー Bot
 
-Discord server bot for posting project-process reminders into channels.
+Discordサーバー上の共同作業で、工程ごとのリマインダーを指定チャンネルへ投稿するBotです。
 
-## MVP scope
+## MVPの範囲
 
-- Register reminders with `/reminder add`
-- List pending reminders with `/reminder list`
-- Mark reminders as done with `/reminder done`
-- Delete reminders with `/reminder delete`
-- Post a channel notification when a reminder reaches its notify time
-- Persist reminders in SQLite across bot restarts
+- `/reminder add` でリマインダーを登録する
+- `/reminder list` で未完了リマインダーを一覧表示する
+- `/reminder show` でリマインダー詳細を確認する
+- `/reminder done` でリマインダーを完了にする
+- `/reminder delete` でリマインダーを削除する
+- 通知日時になったら指定チャンネルへ投稿する
+- Botを再起動してもSQLiteに保存した予定を維持する
 
-## Setup
+## セットアップ
 
-1. Create a Discord application in the Discord Developer Portal.
-2. Open the application's Bot page, create a bot, and copy its token.
-3. Privileged Gateway Intents are not required for this MVP. Message Content,
-   Server Members, and Presence intents can stay off.
-4. In Discord, enable Developer Mode and copy your test server ID if you want
-   fast development command syncing.
-5. Open OAuth2 URL Generator and select:
+1. Discord Developer PortalでApplicationを作成します。
+2. ApplicationのBotページを開き、Botを作成してTokenをコピーします。
+3. このMVPではPrivileged Gateway Intentsは不要です。Message Content、Server Members、Presence intentsはOFFのままで構いません。
+4. 開発中にスラッシュコマンドを早く反映したい場合は、Discordの開発者モードをONにして、テストサーバーIDをコピーします。
+5. OAuth2 URL Generatorを開き、Scopesで以下を選択します。
    - `bot`
    - `applications.commands`
-6. Select bot permissions:
+6. Bot Permissionsで以下を選択します。
    - View Channels
    - Send Messages
    - Embed Links
-7. Open the generated URL and invite the bot to your test server.
-8. Copy `.env.example` to `.env`.
-9. Set `DISCORD_TOKEN` in `.env`.
-10. During development, set `DISCORD_GUILD_ID` to your test server ID.
-11. Install dependencies:
+7. 生成されたURLを開き、Botをテストサーバーへ招待します。
+8. `.env.example` を `.env` にコピーします。
+9. `.env` の `DISCORD_TOKEN` にBot Tokenを設定します。
+10. 開発中は `.env` の `DISCORD_GUILD_ID` にテストサーバーIDを設定します。
+11. 依存関係をインストールします。
 
 ```powershell
 python -m venv .venv
@@ -38,36 +37,33 @@ python -m venv .venv
 pip install -e .
 ```
 
-12. Run the bot:
+12. Botを起動します。
 
 ```powershell
 python -m reminder_bot.bot
 ```
 
-For local development, set `DISCORD_GUILD_ID` to your test server ID so slash
-commands sync quickly to that server.
+`DISCORD_GUILD_ID` を設定すると、スラッシュコマンドが指定サーバーへ同期されやすくなります。未設定の場合はグローバル同期になり、Discord側で反映に時間がかかることがあります。
 
-If you install with `pip install -r requirements.txt` instead of `pip install -e .`,
-set `PYTHONPATH` before running commands:
+`pip install -e .` ではなく `pip install -r requirements.txt` でインストールする場合は、起動前に `PYTHONPATH` を設定してください。
 
 ```powershell
 $env:PYTHONPATH='src'
 python -m reminder_bot.bot
 ```
 
-## Bot permissions
+## Bot権限
 
-Invite the bot with these capabilities:
+Bot招待時に必要な主な権限は以下です。
 
 - `bot`
 - `applications.commands`
 - Send Messages
 - View Channels
 
-The OAuth2 permission value for View Channels and Send Messages is `3072`.
-The bot must have these permissions in each notification target channel.
+View ChannelsとSend Messagesのみを権限値で指定する場合は `3072` です。通知先にする各チャンネルで、Botが閲覧と送信をできる必要があります。
 
-## Commands
+## コマンド
 
 ```text
 /reminder add title due_at description assignee remind_at channel
@@ -77,7 +73,7 @@ The bot must have these permissions in each notification target channel.
 /reminder delete reminder_id
 ```
 
-Examples:
+使用例:
 
 ```text
 /reminder add title:"資料レビュー" due_at:"2h" assignee:@tanaka
@@ -88,10 +84,9 @@ Examples:
 /reminder delete reminder_id:7
 ```
 
-When `remind_at` is omitted, the bot notifies at `due_at`. Use the numeric ID
-shown as `#7` with `show`, `done`, and `delete`.
+`remind_at` を省略すると、Botは `due_at` の時刻に通知します。`show`、`done`、`delete` では、一覧に表示される `#7` のようなIDの数字部分を使います。
 
-Datetime values accept ISO-like local times such as:
+日時入力は以下の形式に対応しています。
 
 ```text
 2026-06-20 18:00
@@ -101,34 +96,43 @@ Datetime values accept ISO-like local times such as:
 3d
 ```
 
-Absolute times are interpreted with `TIMEZONE`, which defaults to `Asia/Tokyo`.
-Relative values mean minutes, hours, or days from the current time.
+絶対時刻は `TIMEZONE` のタイムゾーンで解釈されます。デフォルトは `Asia/Tokyo` です。相対指定は、現在時刻からの分・時間・日数として扱われます。
 
-## Development
+## 開発
 
-Run tests that do not require Discord:
+Discord接続なしで実行できるテスト:
 
 ```powershell
 $env:PYTHONPATH='src'
 python -m unittest discover -s tests
 ```
 
-## Operational notes
+構文チェック:
 
-- Never commit `.env` or a real Discord bot token.
-- Reminder times are stored as UTC in SQLite and displayed in `TIMEZONE`.
-- If a notification fails because of channel permissions or a deleted channel, the bot records the error and retries after a short delay.
-- Notification messages only allow the configured assignee mention; arbitrary mentions in titles or descriptions are not expanded.
-- Completing a reminder is limited to the creator, assignee, or members with Manage Messages permission.
-- Back up the SQLite database file under `data/` if reminders matter operationally.
-- Keep the host machine clock accurate; reminder delivery depends on system time.
+```powershell
+python -m compileall src tests
+```
 
-## Troubleshooting
+## 運用上の注意
 
-- Slash commands do not appear: set `DISCORD_GUILD_ID` for local development and restart the bot.
-- Slash commands still do not appear: confirm the bot was invited with the `applications.commands` scope.
-- Bot cannot post reminders: check the bot has Send Messages permission in the target channel.
-- `ModuleNotFoundError: reminder_bot`: install with `pip install -e .` or set `$env:PYTHONPATH='src'`.
-- `Asia/Tokyo` timezone is missing on Windows: install dependencies from `pyproject.toml`; the `tzdata` package is included.
-- `DISCORD_TOKEN is required`: copy `.env.example` to `.env` and set `DISCORD_TOKEN`.
-- Login fails: regenerate the Bot Token in the Developer Portal and update `.env`.
+- `.env` や実際のDiscord Bot Tokenは絶対にコミットしないでください。
+- リマインダー時刻はSQLite内ではUTCで保存し、表示時に `TIMEZONE` へ変換します。
+- チャンネル権限不足やチャンネル削除などで通知に失敗した場合、Botはエラーを記録し、短い間隔を空けて再試行します。
+- 通知メッセージでは、設定された担当者メンションのみを許可します。タイトルや説明文に含まれる任意のメンションは展開されません。
+- リマインダーを完了にできるのは、作成者、担当者、またはManage Messages権限を持つメンバーです。
+- リマインダーが業務上重要な場合は、`data/` 配下のSQLiteデータベースを定期的にバックアップしてください。
+- 通知時刻は実行環境のシステム時刻に依存するため、ホストマシンの時刻を正確に保ってください。
+
+## トラブルシュート
+
+- `/reminder` が表示されない: 開発中は `DISCORD_GUILD_ID` を設定してBotを再起動してください。
+- それでもスラッシュコマンドが表示されない: Bot招待時に `applications.commands` scopeを含めたか確認してください。
+- Botが通知を投稿しない: 通知先チャンネルでBotにView ChannelsとSend Messages権限があるか確認してください。
+- `ModuleNotFoundError: reminder_bot` が出る: `pip install -e .` でインストールするか、`$env:PYTHONPATH='src'` を設定してください。
+- Windowsで `Asia/Tokyo` が見つからない: 依存関係をインストールしてください。`tzdata` パッケージを含めています。
+- `DISCORD_TOKEN is required` が出る: `.env.example` を `.env` にコピーし、`DISCORD_TOKEN` を設定してください。
+- Discordログインに失敗する: Developer PortalでBot Tokenを再発行し、`.env` を更新してください。
+
+## 現在の開発状況
+
+MVPのコード実装と単体テストは完了しています。次に必要なのは、実際のDiscordテストサーバーでBotを起動し、スラッシュコマンド登録・リマインダー作成・チャンネル通知を確認することです。
