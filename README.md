@@ -159,6 +159,7 @@ python -m compileall src tests
 ## トラブルシュート
 
 - `/reminder` が表示されない: 開発中は `DISCORD_GUILD_ID` を設定してBotを再起動してください。
+- `/reminder add` が2つ表示される: 以前同期したグローバルコマンドが残っている可能性があります。最新版のBotを起動すると、開発サーバー指定時はグローバルコマンドを削除し、テストサーバー用コマンドだけを同期します。
 - `DISCORD_GUILD_ID` を設定しても表示されない: サーバーIDが正しいか、Botを招待したサーバーと一致しているか確認してください。
 - それでもスラッシュコマンドが表示されない: Bot招待時に `applications.commands` scopeを含めたか確認してください。
 - Botが通知を投稿しない: 通知先チャンネルでBotにView ChannelsとSend Messages権限があるか確認してください。

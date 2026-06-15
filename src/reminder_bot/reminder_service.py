@@ -55,6 +55,7 @@ class ReminderService:
 
         now = _now_utc()
         with open_database(self.database_path) as connection:
+            connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
                 """
                 SELECT * FROM reminders
