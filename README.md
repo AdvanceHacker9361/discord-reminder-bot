@@ -152,6 +152,44 @@ python -m compileall src tests
 - リマインダーが業務上重要な場合は、`data/` 配下のSQLiteデータベースを定期的にバックアップしてください。
 - 通知時刻は実行環境のシステム時刻に依存するため、ホストマシンの時刻を正確に保ってください。
 
+## Renderで常時稼働させる
+
+このBotは、RenderのBackground Workerとして常時稼働できます。PCを閉じてもBotをオンラインに保ちたい場合は、この方法を使います。
+
+このリポジトリには `render.yaml` を含めています。RenderのBlueprintとして読み込むと、以下の構成でWorkerが作成されます。
+
+- サービス種別: Background Worker
+- ランタイム: Python
+- Pythonバージョン: `.python-version` で指定
+- 起動コマンド: `python -m reminder_bot.bot`
+- SQLite保存先: `/var/data/reminders.sqlite3`
+- 永続ディスク: `/var/data`
+- リージョン: Singapore
+- インスタンス数: 1
+
+手順:
+
+1. Renderでアカウントを作成します。
+2. GitHub連携でこのリポジトリをRenderに接続します。
+3. Render DashboardでBlueprintまたはNew Background Workerを作成します。
+4. `render.yaml` を使う場合は、Blueprintとしてこのリポジトリを選択します。
+5. 環境変数 `DISCORD_TOKEN` にDiscord Bot Tokenを設定します。
+6. `DISCORD_GUILD_ID` を必要に応じて設定します。
+   - 単一のテストサーバーや本番サーバーだけで使う場合は、そのサーバーIDを設定します。
+   - 複数サーバーで使う公開運用にする場合は、空または未設定にするとグローバルコマンド同期になります。ただし反映に時間がかかることがあります。
+7. デプロイ後、Logsで `Shard ID None has connected to Gateway` が出ることを確認します。
+8. Discord上で `/reminder` が候補表示されることを確認します。
+
+`DISCORD_TOKEN` は必ずRenderの環境変数として設定し、リポジトリにはコミットしないでください。
+
+Renderの通常ファイルシステムは再起動や再デプロイで消えるため、SQLiteを使う場合は永続ディスクが必要です。`render.yaml` では `/var/data` に永続ディスクをマウントし、`DATABASE_PATH=/var/data/reminders.sqlite3` を設定しています。
+
+SQLiteと永続ディスクを使うため、Workerは1インスタンス運用にしてください。複数インスタンスに増やすと、SQLiteの書き込み競合や通知重複の原因になります。`render.yaml` では `numInstances: 1` を明示しています。
+
+Render上のバックアップは、Renderのディスクスナップショット、またはサービス停止中に `/var/data` 配下のSQLite関連ファイルを取得する方法を使ってください。SQLiteはWALモードで動作するため、稼働中に単純コピーする場合は `reminders.sqlite3` だけでなく、関連する `-wal` / `-shm` ファイルも考慮する必要があります。
+
+Render上で本番運用する場合、ローカルPC上のBotは停止してください。同じBot Tokenで複数プロセスを同時起動すると、リマインダー登録や通知が重複する原因になります。
+
 ## ポリシー
 
 - [サービス利用規約](TERMS_OF_SERVICE.md)
